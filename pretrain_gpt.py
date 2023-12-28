@@ -348,8 +348,9 @@ def git_ds_info():
 if __name__ == "__main__":
     git_ds_info()
     pretrain(train_valid_test_datasets_provider,
-             model_provider,
-             ModelType.encoder_or_decoder,
-             forward_step,
-             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'},
-             data_post_process=data_post_process)
+            model_provider,
+            ModelType.encoder_or_decoder,
+            forward_step,
+            args_defaults={'tokenizer_type': 'GPT2BPETokenizer'},  #moe test
+            # args_defaults={'tokenizer_type': 'GPTSentencePieceTokenizer'}, 
+            data_post_process=data_post_process)

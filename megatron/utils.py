@@ -225,7 +225,7 @@ def get_ltor_masks_and_position_ids(data,
 
 def print_rank_0(message):
     """If distributed is initialized, print only on rank 0."""
-    if torch.distributed.is_initialized():
+    if torch.distributed.is_initialized(): # 在分布式训练中，打印rank=0的日志信息，防止冗余
         if torch.distributed.get_rank() == 0:
             print(message, flush=True)
     else:

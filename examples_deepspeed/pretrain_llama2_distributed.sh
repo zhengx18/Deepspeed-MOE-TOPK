@@ -1,15 +1,22 @@
 #!/bin/bash
 # This example script is contributed by external user https://github.com/nrailgun
-set -ex
+# set -ex
 
 ######################################
 # Change the below configurations here
-BASE_PATH=./tmp
+# BASE_PATH=./tmp
+# DS_CONFIG=${BASE_PATH}/deepspeed.json
+# DATASET_1="./tmp/data/bookcorpus_train_1m_text_sentence"
+# DATASET="1 ${DATASET_1}"
+# CHECKPOINT_PATH=./tmp
+# TOKENIZER_PATH=./tmp/tokenizer.model # offical llama tokenizer.model
+
+BASE_PATH=/nlp_group/zhengxue/LLM/Pretrain/workspace
 DS_CONFIG=${BASE_PATH}/deepspeed.json
-DATASET_1="./tmp/data/bookcorpus_train_1m_text_sentence"
+DATASET_1=${BASE_PATH}/data/oscar-en-10k-meg-llama_text_document
 DATASET="1 ${DATASET_1}"
-CHECKPOINT_PATH=./tmp
-TOKENIZER_PATH=./tmp/tokenizer.model # offical llama tokenizer.model
+CHECKPOINT_PATH=${BASE_PATH}/checkpoints
+TOKENIZER_PATH=/nlp_group/zhengxue/LLM/Pretrain/workspace/tokenizers/Llama2Tokenizer/tokenizer.model
 
 TP=2
 PP=2
@@ -30,10 +37,11 @@ NUM_KV_HEADS=4 # llama2 70B uses GQA
 
 MICRO_BATCH_SIZE=4
 GLOBAL_BATCH_SIZE=32 # e.g. llama: 4M tokens
-TRAIN_STEPS=250000 # e.g. llama: 1T tokens / 4M tokens_per_batch = 250000 steps
+# TRAIN_STEPS=250000 # e.g. llama: 1T tokens / 4M tokens_per_batch = 250000 steps
+TRAIN_STEPS=1500
 LR=3e-4
 MIN_LR=3e-5
-LR_WARMUP_STEPS=2000
+LR_WARMUP_STEPS=200
 WEIGHT_DECAY=0.1
 GRAD_CLIP=1
 
@@ -51,7 +59,6 @@ activation_checkpoint="false"
 # --normalization rmsnorm \
 # --disable-bias-linear \
 ######################################
-
 
 
 cat <<EOT > $DS_CONFIG
@@ -89,47 +96,47 @@ fi
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE --nnodes $NNODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT"
 
 torchrun $DISTRIBUTED_ARGS \
-       pretrain_gpt.py \
-       --tensor-model-parallel-size $TP \
-       --pipeline-model-parallel-size $PP \
-       --num-layers $NUM_LAYERS \
-       --hidden-size $HIDDEN_SIZE \
-       --ffn-hidden-size $FFN_HIDDEN_SIZE \
-       --num-attention-heads $NUM_HEADS \
-       --micro-batch-size $MICRO_BATCH_SIZE \
-       --global-batch-size $GLOBAL_BATCH_SIZE \
-       --seq-length $SEQ_LENGTH \
-       --max-position-embeddings $SEQ_LENGTH \
-       --train-iters $TRAIN_STEPS \
-       --save $CHECKPOINT_PATH \
-       --load $CHECKPOINT_PATH \
-       --data-path $DATASET \
-       --data-impl mmap \
-       --tokenizer-type GPTSentencePieceTokenizer \
-       --tokenizer-model $TOKENIZER_PATH \
-       --split 949,50,1 \
-       --distributed-backend nccl \
-       --lr $LR \
-       --lr-decay-style cosine \
-       --min-lr $MIN_LR \
-       --weight-decay $WEIGHT_DECAY \
-       --clip-grad $GRAD_CLIP \
-       --lr-warmup-iters $LR_WARMUP_STEPS \
-       --optimizer adam \
-       --adam-beta1 0.9 \
-       --adam-beta2 0.95 \
-       --log-interval 1 \
-       --save-interval 10000 \
-       --eval-interval 1000 \
-       --eval-iters 10 \
-       --bf16 \
-       --no-query-key-layer-scaling \
-       --attention-dropout 0 \
-       --hidden-dropout 0 \
-       --use-rotary-position-embeddings \
-       --untie-embeddings-and-output-weights \
-       --swiglu \
-       --normalization rmsnorm \
-       --disable-bias-linear \
-       --num-key-value-heads $NUM_KV_HEADS \
-       $ds_args
+      pretrain_gpt.py \
+      --tensor-model-parallel-size $TP \
+      --pipeline-model-parallel-size $PP \
+      --num-layers $NUM_LAYERS \
+      --hidden-size $HIDDEN_SIZE \
+      --ffn-hidden-size $FFN_HIDDEN_SIZE \
+      --num-attention-heads $NUM_HEADS \
+      --micro-batch-size $MICRO_BATCH_SIZE \
+      --global-batch-size $GLOBAL_BATCH_SIZE \
+      --seq-length $SEQ_LENGTH \
+      --max-position-embeddings $SEQ_LENGTH \
+      --train-iters $TRAIN_STEPS \
+      --save $CHECKPOINT_PATH \
+      --load $CHECKPOINT_PATH \
+      --data-path $DATASET \
+      --data-impl mmap \
+      --tokenizer-type GPTSentencePieceTokenizer \
+      --tokenizer-model $TOKENIZER_PATH \
+      --split 949,50,1 \
+      --distributed-backend nccl \
+      --lr $LR \
+      --lr-decay-style cosine \
+      --min-lr $MIN_LR \
+      --weight-decay $WEIGHT_DECAY \
+      --clip-grad $GRAD_CLIP \
+      --lr-warmup-iters $LR_WARMUP_STEPS \
+      --optimizer adam \
+      --adam-beta1 0.9 \
+      --adam-beta2 0.95 \
+      --log-interval 1 \
+      --save-interval 10000 \
+      --eval-interval 1000 \
+      --eval-iters 10 \
+      --bf16 \
+      --no-query-key-layer-scaling \
+      --attention-dropout 0 \
+      --hidden-dropout 0 \
+      --use-rotary-position-embeddings \
+      --untie-embeddings-and-output-weights \
+      --swiglu \
+      --normalization rmsnorm \
+      --disable-bias-linear \
+      --num-key-value-heads $NUM_KV_HEADS \
+      $ds_args

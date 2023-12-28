@@ -1276,6 +1276,7 @@ def _add_data_args(parser):
                        help='Force to use certain index file.')
     group.add_argument('--train-shuffle-idx-path', type=str, default=None,
                        help='Force to use certain index file.')
+    print(group._option_string_actions['--tokenizer-type'].help)
     return parser
 
 
