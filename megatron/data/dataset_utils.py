@@ -40,9 +40,53 @@ DSET_TYPE_T5  = 't5'
 
 DSET_TYPES = [DSET_TYPE_BERT, DSET_TYPE_ICT, DSET_TYPE_T5]
 
+from megatron.utils import ipdb_rank_0
 
 def get_datasets_weights_and_num_samples(data_prefix,
                                          train_valid_test_num_samples):
+
+    # The data prefix should be in the format of:
+    #   weight-1, data-prefix-1, weight-2, data-prefix-2, ..
+    assert len(data_prefix) % 2 == 0
+    num_datasets = len(data_prefix) // 2
+    weights = [0]*num_datasets
+    prefixes = [0]*num_datasets
+    # print(f"num_datasets:{num_datasets}\nweights:{weights}")
+    for i in range(num_datasets):
+        weights[i] = float(data_prefix[2*i])
+        prefixes[i] = (data_prefix[2*i+1]).strip()
+    # print(f"weights:{weights}")
+    # Normalize weights
+    weight_sum = 0.0
+    for weight in weights:
+        weight_sum += weight
+    assert weight_sum > 0.0
+    # print(f"weight_sum:{weight_sum}")
+    weights = [weight / weight_sum for weight in weights]
+    # print(f"normalize weights:{weights}")
+    # Add 0.5% (the 1.005 factor) so in case the bleding dataset does
+    # not uniformly distribute the number of samples, we still have
+    # samples left to feed to the network.
+    if isinstance(train_valid_test_num_samples, list):
+        datasets_train_valid_test_num_samples = []
+        for weight in weights:
+            datasets_train_valid_test_num_samples.append(
+                [int(math.ceil(val * weight * 1.005))
+                for val in train_valid_test_num_samples]) # [1464320, 20480, 10240]
+            print(f'datasets_train_valid_test_num_samples:{datasets_train_valid_test_num_samples}')
+    else:
+        # Used when separate dataset files are provided for train,
+        # valid and test
+        datasets_train_valid_test_num_samples = [
+            int(math.ceil(train_valid_test_num_samples * weight * 1.005))
+            for weight in weights]
+    # print(f"prefixes:{prefixes}\n")
+    # print(f"weights:{weights}\n")
+    # print(f"datasets_train_valid_test_num_samples:{datasets_train_valid_test_num_samples}\n")
+    # print(f"datasets_train_valid_test_num_samples:{len(datasets_train_valid_test_num_samples)}\n")
+    return prefixes, weights, datasets_train_valid_test_num_samples
+
+def get_datasets_weights(data_prefix):
 
     # The data prefix should be in the format of:
     #   weight-1, data-prefix-1, weight-2, data-prefix-2, ..
@@ -60,24 +104,7 @@ def get_datasets_weights_and_num_samples(data_prefix,
     assert weight_sum > 0.0
     weights = [weight / weight_sum for weight in weights]
 
-    # Add 0.5% (the 1.005 factor) so in case the bleding dataset does
-    # not uniformly distribute the number of samples, we still have
-    # samples left to feed to the network.
-    if isinstance(train_valid_test_num_samples, list):
-        datasets_train_valid_test_num_samples = []
-        for weight in weights:
-            datasets_train_valid_test_num_samples.append(
-                [int(math.ceil(val * weight * 1.005))
-                for val in train_valid_test_num_samples])
-    else:
-        # Used when separate dataset files are provided for train,
-        # valid and test
-        datasets_train_valid_test_num_samples = [
-            int(math.ceil(train_valid_test_num_samples * weight * 1.005))
-            for weight in weights]
-
-    return prefixes, weights, datasets_train_valid_test_num_samples
-
+    return prefixes, weights
 
 def compile_helper():
     """Compile helper function ar runtime. Make sure this

@@ -27,6 +27,9 @@ import subprocess
 from torch import nn
 import torch.nn.functional as F
 
+from megatron.utils import ipdb_rank_0
+
+
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
@@ -301,6 +304,10 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 
     print_rank_0('> building train, validation, and test datasets '
                  'for GPT ...')
+    # ipdb_rank_0()
+    # import ipdb; ipdb.set_trace()
+    # import pdb; pdb.set_trace()
+    # print(f'args.data_path:{args.data_path}') # list
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,

@@ -17,6 +17,8 @@ from megatron.data.dataset_utils import get_train_valid_test_split_
 from megatron.data.indexed_dataset import make_dataset as make_indexed_dataset
 
 
+from megatron.utils import ipdb_rank_0
+
 def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
                                     train_valid_test_num_samples,
                                     seq_length, seed, skip_warmup,
@@ -29,7 +31,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
     if data_prefix:
         print_rank_0("Single data path provided for train, valid & test")
-
+        # print(f'len(data_prefix):{len(data_prefix)}') # 60
         # Single dataset.
         if len(data_prefix) == 1:
             return _build_train_valid_test_datasets(data_prefix[0],
@@ -40,6 +42,7 @@ def build_train_valid_test_datasets(data_prefix, data_impl, splits_string,
 
         # Blending dataset.
         # Parse the values.
+        # print(f"type(train_valid_test_num_samples):{train_valid_test_num_samples}") # [1464320, 20480, 10240]
         output = get_datasets_weights_and_num_samples(data_prefix,
                                                       train_valid_test_num_samples)
         prefixes, weights, datasets_train_valid_test_num_samples = output

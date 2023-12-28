@@ -344,3 +344,5 @@ run_cmd="deepspeed ${DIR}/../../pretrain_gpt.py ${megatron_options} ${data_optio
 echo ${run_cmd}
 eval ${run_cmd}
 set +x
+
+

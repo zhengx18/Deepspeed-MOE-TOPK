@@ -24,6 +24,17 @@ from megatron.model.module import param_is_not_shared
 from megatron.model.rotary_pos_embedding import RotaryEmbedding
 
 
+def ipdb_rank_0():
+    import os
+    if os.getenv('RANK') == '0':
+        print(f"RANK:{os.getenv('RANK')}")
+        import ipdb;ipdb.set_trace()
+        # import pdb; pdb.set_trace()
+    else:
+        import time
+        print(f"RANK:{os.getenv('RANK')}")
+        time.sleep(10)
+        
 def update_rotary_pos_emb(seq_length):
     args = get_args()
     rotary_dim = args.hidden_size // args.num_attention_heads \

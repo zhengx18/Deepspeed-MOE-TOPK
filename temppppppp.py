@@ -341,10 +341,10 @@ if __name__ == '__main__':
     #                     use_rts=True, 
     #                     use_tutel=False)
 
-    gate_output = top2gating(logits, 
-                        capacity_factor=1.0,
-                        min_capacity=4,
-                        )
+    # gate_output = top2gating(logits, 
+    #                     capacity_factor=1.0,
+    #                     min_capacity=4,
+    #                     )
 
     # import torch
     # # import torch 包
@@ -356,6 +356,6 @@ if __name__ == '__main__':
     # # torch.zeros_like(mask1).scatter_(0, top_idx, 1)
     # c = b.scatter_(0, index, 1)
 
+
+
     print('99999')
-
-
