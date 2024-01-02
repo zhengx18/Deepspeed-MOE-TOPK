@@ -1,3 +1,8 @@
+## 20240102
+# done
+    1.将torchrun修改为mpirun,解决通信bug问题
+    2.训练tokens=50B, topk=1/2的对比实验
+
 ## 20231228
 
 # bug1: 训练3000+ iteration后,报错OutOfMemoryError:
