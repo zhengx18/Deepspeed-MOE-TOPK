@@ -297,7 +297,7 @@ def forward_step(data_iterator, model):
     # Output_tensor stores the standard loss, loos_func calculates the total loss.
     return output_tensor, partial(loss_func, loss_mask, moe_loss, mos_loss)
 
-
+# train_val_test_num_samples:[1464832, 15360, 1280]
 def train_valid_test_datasets_provider(train_val_test_num_samples):
     """Build train, valid, and test datasets."""
     args = get_args()
@@ -308,6 +308,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     # import ipdb; ipdb.set_trace()
     # import pdb; pdb.set_trace()
     # print(f'args.data_path:{args.data_path}') # list
+    print(f'train_val_test_num_samples:{train_val_test_num_samples}\n\n')
     train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
         data_prefix=args.data_path,
         data_impl=args.data_impl,
@@ -353,6 +354,7 @@ def git_ds_info():
 
 
 if __name__ == "__main__":
+
     git_ds_info()
     pretrain(train_valid_test_datasets_provider,
             model_provider,

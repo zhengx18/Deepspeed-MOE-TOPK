@@ -17,6 +17,23 @@ from tools.retro.utils import get_args_path as get_retro_args_path
 
 from megatron.core.transformer import TransformerConfig
 
+def set_small_time():
+    import torch.distributed as dist
+    from datetime import timedelta
+
+    # 设置超时时间
+    timeout = timedelta(minutes=1)
+
+    # 初始化分布式训练环境
+    dist.init_process_group(
+        backend='nccl',          # 使用NCCL后端
+        init_method='env://',    # 从环境变量获取初始化信息
+        world_size=64,            # 设置总的进程数（世界大小）
+        rank=0,                  # 当前进程的排名
+        timeout=timeout          # 设置超时时间
+    )
+
+
 def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     """Parse all arguments."""
     parser = argparse.ArgumentParser(description='Megatron-LM Arguments',
@@ -61,6 +78,15 @@ def parse_args(extra_args_provider=None, ignore_unknown_args=False):
     args.rank = int(os.getenv('RANK', '0'))
     args.world_size = int(os.getenv("WORLD_SIZE", '1'))
 
+    # launch from mpi
+    if int(os.getenv('OMPI_COMM_WORLD_SIZE', '0')) > 0:
+        args.rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
+        args.local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+        args.world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
+        addr, port = args.master_addr.split(':')
+        os.environ['MASTER_ADDR'] = addr
+        os.environ['MASTER_PORT'] = port
+        delattr(args, 'master_addr')
     return args
 
 def validate_args(args):
@@ -1087,7 +1113,8 @@ def _add_mixed_precision_args(parser):
 
 def _add_distributed_args(parser):
     group = parser.add_argument_group(title='distributed')
-
+    group.add_argument('--master-addr', type=str, default='127.0.0.1:8389',
+                       help='master add.')
     group.add_argument('--tensor-model-parallel-size', type=int, default=1,
                        help='Degree of tensor model parallelism.')
     group.add_argument('--enable-expert-tensor-parallelism', action='store_true',

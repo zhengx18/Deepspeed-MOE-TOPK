@@ -157,11 +157,19 @@ def pretrain(train_valid_test_dataset_provider,
         if "compression_training" in args.deepspeed_config_dict:
             args.compression_training = True
 
+    print(f'****************Model, optimizer, and learning rate**************')
     # Model, optimizer, and learning rate.
     timers('model-and-optimizer-setup', log_level=0).start(barrier=True)
-    model, optimizer, opt_param_scheduler = setup_model_and_optimizer(
-        model_provider, model_type, teacher=False, data_post_process=data_post_process,
-        build_train_valid_test_datasets_provider=train_valid_test_dataset_provider)
+    if args.iterable_dataset:
+        print(f'args.iterable_dataset:{args.iterable_dataset}')
+        model, optimizer, opt_param_scheduler = setup_model_and_optimizer(
+            model_provider, model_type, teacher=False, data_post_process=data_post_process)
+    else:
+        print(f'******** no iterable_dataset******')
+        model, optimizer, opt_param_scheduler = setup_model_and_optimizer(
+            model_provider, model_type, teacher=False, data_post_process=data_post_process,
+            build_train_valid_test_datasets_provider=train_valid_test_dataset_provider)
+    
     timers('model-and-optimizer-setup').stop()
     print_datetime('after model, optimizer, and learning rate '
                    'scheduler are built')
@@ -184,7 +192,7 @@ def pretrain(train_valid_test_dataset_provider,
     else:
         train_data_iterator, valid_data_iterator, test_data_iterator \
             = build_train_valid_test_data_iterators(
-                train_valid_test_dataset_provider)
+                train_valid_test_dataset_provider) # ddd
     if args.data_efficiency_curriculum_learning:
         if args.deepspeed_dataloader is not None:
             # We use args to pass the deepspeed_dataloader because adding
@@ -568,6 +576,7 @@ def setup_model_and_optimizer(model_provider_func,
     if args.deepspeed:
         print_rank_0("DeepSpeed is enabled.")
         pp = mpu.get_pipeline_model_parallel_world_size()
+        # import pdb; pdb.set_trace()
         if args.data_efficiency_curriculum_learning and build_train_valid_test_datasets_provider is not None:
             train_ds = None
             # Only need to build dataset on tp rank 0 since Megatron has the
@@ -1525,7 +1534,8 @@ def build_train_valid_test_data_loaders(
     args.do_train = flags[0].item()
     args.do_valid = flags[1].item()
     args.do_test = flags[2].item()
-
+    # args.do_train:1, args.do_valid:1, args.do_test:0
+    print(f'************\nargs.do_train:{args.do_train}\nargs.do_valid:{args.do_valid}\n args.do_test:{args.do_test}\n**********')
     return train_dataloader, valid_dataloader, test_dataloader
 
 

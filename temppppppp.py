@@ -97,7 +97,7 @@ def top1gating(logits: Tensor,
                                                           high=torch.tensor(1.0, device=logits.device)).rsample
             exp_selection_uniform_map[logits.device] = uniform
 
-        mask1_rand = mask1 * uniform(mask1.shape)
+        mask1_rand = mask1 * uniform(mask1.shape) # mask1 0-1矩阵,将数值1 * uniform(0,1)
     else:
         mask1_rand = mask1
 
@@ -105,8 +105,8 @@ def top1gating(logits: Tensor,
         0] >= min_capacity, "No. of tokens (batch-size) should be greater than min_capacity. Either set min_capacity to 0 or increase your batch size."
 
     top_idx = _top_idx(mask1_rand, capacity) # shape: [capacity, num_experts]
-
-    new_mask1 = mask1 * torch.zeros_like(mask1).scatter_(0, top_idx, 1) # num_tokens, num_experts
+    # torch.zeros_like(mask1).scatter_(0, top_idx, 1): torch.Size([20, 16]),将每列top4的token标记为1
+    new_mask1 = mask1 * torch.zeros_like(mask1).scatter_(0, top_idx, 1) # num_tokens, num_experts,大多数情况，new_mask1与mask1一致
     mask1 = new_mask1
 
     if use_tutel:
@@ -133,15 +133,15 @@ def top1gating(logits: Tensor,
         ], exp_counts
 
     # Store the capacity location for each token
-    locations1_s = torch.sum(locations1 * mask1, dim=1) # [experts_num]
+    locations1_s = torch.sum(locations1 * mask1, dim=1) # [token_nums]
 
     # Normalize gate probabilities
     mask1_float = mask1.float()
     gates = gates * mask1_float # [token_nums, experts_num]
 
-    locations1_sc = _one_hot_to_float(locations1_s, capacity) # [token_nums, capacity]
+    locations1_sc = _one_hot_to_float(locations1_s, capacity) # [token_nums, capacity],onehot 矩阵，每行一个1
     combine_weights = einsum("se,sc->sec", gates, locations1_sc) # gates [token_nums, experts_num], locations1_sc [token_nums, capacity]
-
+    # combine_weights: [token_nums, experts_num, capacity]
     dispatch_mask = combine_weights.bool() # [token_nums, experts_num, capacity]
     # l_aux-tensor, combine_weights-[token_nums, experts_num, capacity], exp_counts-[experts_num]
     return l_aux, combine_weights, dispatch_mask, exp_counts # 1.1508
@@ -203,7 +203,7 @@ def top2gating(logits: Tensor, capacity_factor: float, min_capacity: int) -> Tup
     locations1 = torch.cumsum(mask1, dim=0) - 1
     locations2 = torch.cumsum(mask2, dim=0) - 1
     # Update 2nd's location by accounting for locations of 1st
-    locations2 += torch.sum(mask1, dim=0, keepdim=True)
+    locations2 += torch.sum(mask1, dim=0, keepdim=True) # add the first 
 
     # gating decisions
     exp_counts = torch.sum(mask1, dim=0).detach().to('cpu') # [num_experts], each element -> num of tokens
@@ -211,34 +211,34 @@ def top2gating(logits: Tensor, capacity_factor: float, min_capacity: int) -> Tup
     # Compute l_aux
     me = torch.mean(gates, dim=0)
     ce = torch.mean(mask1.float(), dim=0)
-    l_aux = torch.mean(me * ce) * num_experts * num_experts
+    l_aux = torch.mean(me * ce) * num_experts * num_experts # topk=2, num_experts double
 
     # Remove locations outside capacity from mask
     mask1 *= torch.lt(locations1, capacity)
     mask2 *= torch.lt(locations2, capacity)
 
     # Store the capacity location for each token
-    locations1_s = torch.sum(locations1 * mask1, dim=1)
-    locations2_s = torch.sum(locations2 * mask2, dim=1)
+    locations1_s = torch.sum(locations1 * mask1, dim=1) # [num_tokens]
+    locations2_s = torch.sum(locations2 * mask2, dim=1) # [num_tokens]
 
     # Normalize gate probabilities
     mask1_float = mask1.float()
     mask2_float = mask2.float()
-    gates1_s = einsum("se,se->s", gates, mask1_float)
-    gates2_s = einsum("se,se->s", gates, mask2_float)
+    gates1_s = einsum("se,se->s", gates, mask1_float) # [num_tokens]
+    gates2_s = einsum("se,se->s", gates, mask2_float) # [num_tokens]
     denom_s = gates1_s + gates2_s
     # Avoid divide-by-zero
-    denom_s = torch.clamp(denom_s, min=torch.finfo(denom_s.dtype).eps)
+    denom_s = torch.clamp(denom_s, min=torch.finfo(denom_s.dtype).eps) # 防止除零错误，赋值输入张量同类型的最小正数
     gates1_s /= denom_s
     gates2_s /= denom_s
 
     # Calculate combine_weights and dispatch_mask
-    gates1 = einsum("s,se->se", gates1_s, mask1_float)
+    gates1 = einsum("s,se->se", gates1_s, mask1_float) # [num_tokens, num_experts]
     gates2 = einsum("s,se->se", gates2_s, mask2_float)
-    locations1_sc = _one_hot_to_float(locations1_s, capacity)
-    locations2_sc = _one_hot_to_float(locations2_s, capacity)
-    combine1_sec = einsum("se,sc->sec", gates1, locations1_sc)
-    combine2_sec = einsum("se,sc->sec", gates2, locations2_sc)
+    locations1_sc = _one_hot_to_float(locations1_s, capacity) # [num_tokens, capacity]
+    locations2_sc = _one_hot_to_float(locations2_s, capacity) # [num_tokens, capacity]
+    combine1_sec = einsum("se,sc->sec", gates1, locations1_sc) # [num_tokens, num_experts, capacity]
+    combine2_sec = einsum("se,sc->sec", gates2, locations2_sc) # [num_tokens, num_experts, capacity]
     combine_weights = combine1_sec + combine2_sec
     dispatch_mask = combine_weights.bool()
 
@@ -341,10 +341,10 @@ if __name__ == '__main__':
     #                     use_rts=True, 
     #                     use_tutel=False)
 
-    # gate_output = top2gating(logits, 
-    #                     capacity_factor=1.0,
-    #                     min_capacity=4,
-    #                     )
+    gate_output = top2gating(logits, 
+                        capacity_factor=1.0,
+                        min_capacity=4,
+                        )
 
     # import torch
     # # import torch 包
@@ -355,7 +355,5 @@ if __name__ == '__main__':
     
     # # torch.zeros_like(mask1).scatter_(0, top_idx, 1)
     # c = b.scatter_(0, index, 1)
-
-
 
     print('99999')
